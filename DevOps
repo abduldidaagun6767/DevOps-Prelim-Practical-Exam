@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PIR Motion Sensor → LED | IoT Demo</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@400;500;600;700&display=swap');
+
+  :root{
+    --bg: #0a0d13;
+    --panel: #12161f;
+    --panel-2: #171c27;
+    --border: #232a38;
+    --text: #e8ecf1;
+    --text-muted: #838ea1;
+    --amber: #ffc157;
+    --amber-soft: rgba(255,193,87,0.18);
+    --cyan: #5eead4;
+    --wire: #34405a;
+    --wire-lit: #5b7099;
+  }
+
+  *{ box-sizing:border-box; margin:0; padding:0; }
+
+  html{ scroll-behavior:smooth; }
+
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Inter', sans-serif;
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  .mono{ font-family:'Space Mono', monospace; }
+
+  a{ color:inherit; }
+
+  ::selection{ background:var(--amber-soft); color:var(--amber); }
+
+  .wrap{
+    max-width:960px;
+    margin:0 auto;
+    padding:0 28px;
+  }
+
+  /* ---------- NAV ---------- */
+  header.top{
+    position:sticky; top:0; z-index:50;
+    backdrop-filter:blur(10px);
+    background:rgba(10,13,19,0.75);
+    border-bottom:1px solid var(--border);
+  }
+  .navrow{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:16px 28px;
+    max-width:960px; margin:0 auto;
+  }
+  .brand{
+    font-family:'Space Mono', monospace;
+    font-size:13px;
+    letter-spacing:0.08em;
+    color:var(--text-muted);
+    display:flex; align-items:center; gap:8px;
+  }
+  .brand .dot{
+    width:7px; height:7px; border-radius:50%;
+    background:var(--cyan);
+    box-shadow:0 0 8px var(--cyan);
+  }
+  nav.links{ display:flex; gap:24px; font-size:13px; }
+  nav.links a{ color:var(--text-muted); text-decoration:none; transition:color .2s; }
+  nav.links a:hover{ color:var(--text); }
+
+  /* ---------- HERO / STAGE ---------- */
+  .hero{ padding:64px 0 40px; }
+  .eyebrow{
+    font-family:'Space Mono', monospace;
+    font-size:12px; letter-spacing:0.14em;
+    color:var(--cyan); text-transform:uppercase;
+    margin-bottom:18px;
+    display:flex; align-items:center; gap:10px;
+  }
+  .eyebrow::before{
+    content:''; width:22px; height:1px; background:var(--cyan);
+  }
+  h1{
+    font-family:'Space Mono', monospace;
+    font-size:clamp(30px,5vw,50px);
+    line-height:1.15;
+    font-weight:700;
+    letter-spacing:-0.01em;
+    max-width:14ch;
+  }
+  h1 span{ color:var(--amber); }
+  .lede{
+    margin-top:18px;
+    max-width:56ch;
+    color:var(--text-muted);
+    font-size:16px;
+  }
+  .disclaimer{
+    margin-top:14px;
+    font-size:12.5px;
+    color:var(--text-muted);
+    font-family:'Space Mono', monospace;
+    border-left:2px solid var(--border);
+    padding-left:10px;
+  }
+
+  /* ---------- STAGE (interactive room) ---------- */
+  .stage-wrap{ margin-top:44px; }
+  .stage{
+    position:relative;
+    border-radius:14px;
+    border:1px solid var(--border);
+    background:
+      radial-gradient(ellipse 60% 50% at 50% 0%, rgba(255,193,87,0.05), transparent 70%),
+      linear-gradient(180deg, #0d1119, #090b10);
+    min-height:340px;
+    overflow:hidden;
+    cursor:pointer;
+    user-select:none;
+  }
+  .stage::before{
+    content:'';
+    position:absolute; inset:0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+    background-size:28px 28px;
+    pointer-events:none;
+  }
+
+  .glow{
+    position:absolute;
+    top:8%; left:50%;
+    transform:translateX(-50%);
+    width:420px; height:420px;
+    border-radius:50%;
+    background:radial-gradient(circle, rgba(255,193,87,0.35), rgba(255,193,87,0) 65%);
+    opacity:0;
+    transition:opacity .5s ease;
+    pointer-events:none;
+    filter:blur(4px);
+  }
+  .stage.on .glow{ opacity:1; }
+
+  .bulb-holder{
+    position:relative;
+    display:flex; flex-direction:column; align-items:center;
+    padding-top:42px;
+  }
+  .bulb{ position:relative; width:76px; height:auto; z-index:2; transition:filter .4s ease; }
+  .bulb .glass{ fill:#22262f; transition:fill .4s ease, stroke .4s ease; stroke:#3a3f4a; stroke-width:1.5; }
+  .bulb .filament{ stroke:#4a4f59; stroke-width:2; fill:none; transition:stroke .4s ease; }
+  .bulb .base{ fill:#3a3f4a; transition:fill .4s ease; }
+  .stage.on .bulb .glass{ fill:#ffdb8f; stroke:var(--amber); }
+  .stage.on .bulb .filament{ stroke:#8a5a12; }
+  .stage.on .bulb{ filter:drop-shadow(0 0 22px rgba(255,193,87,0.85)); }
+  .bulb-label{
+    margin-top:10px;
+    font-family:'Space Mono', monospace;
+    font-size:11px; letter-spacing:0.1em;
+    color:var(--text-muted);
+    text-transform:uppercase;
+  }
+  .stage.on .bulb-label{ color:var(--amber); }
+
+  .sensor{
+    position:absolute; bottom:22px; left:50%; transform:translateX(-50%);
+    display:flex; flex-direction:column; align-items:center; gap:8px;
+    z-index:2;
+  }
+  .sensor-icon{ position:relative; width:46px; height:46px; }
+  .sensor-icon svg{ width:100%; height:100%; }
+  .sensor-icon .dome{ fill:#1b212c; stroke:#3a4157; stroke-width:1.5; transition:stroke .3s ease; }
+  .stage.on .sensor-icon .dome{ stroke:var(--cyan); }
+  .ring{
+    position:absolute; inset:0; border-radius:50%;
+    border:1px solid var(--cyan);
+    opacity:0; transform:scale(0.6);
+  }
+  .stage.on .ring{ animation:ripple 1.4s ease-out infinite; }
+  .ring.r2{ animation-delay:.4s !important; }
+  .ring.r3{ animation-delay:.8s !important; }
+  @keyframes ripple{
+    0%{ opacity:.6; transform:scale(0.6); }
+    100%{ opacity:0; transform:scale(1.9); }
+  }
+  .sensor-label{
+    font-family:'Space Mono', monospace;
+    font-size:10.5px; letter-spacing:0.08em;
+    color:var(--text-muted); text-transform:uppercase;
+  }
+
+  .hint{
+    position:absolute; top:16px; left:50%; transform:translateX(-50%);
+    font-family:'Space Mono', monospace;
+    font-size:11px; color:var(--text-muted);
+    letter-spacing:0.05em;
+    opacity:.8;
+  }
+
+  .console{
+    border-top:1px solid var(--border);
+    background:#0d1017;
+    padding:14px 20px;
+    font-family:'Space Mono', monospace;
+    font-size:12px;
+    max-height:120px;
+    overflow-y:auto;
+  }
+  .console .row{ display:flex; gap:10px; color:var(--text-muted); padding:2px 0; }
+  .console .row .t{ color:#4a5468; flex-shrink:0; }
+  .console .row.motion .m{ color:var(--cyan); }
+  .console .row.on .m{ color:var(--amber); }
+  .console .row.off .m{ color:var(--text-muted); }
+
+  .controls{
+    display:flex; align-items:center; justify-content:space-between;
+    flex-wrap:wrap; gap:14px;
+    margin-top:16px;
+  }
+  .btn{
+    font-family:'Space Mono', monospace;
+    font-size:12.5px;
+    letter-spacing:0.04em;
+    background:var(--panel-2);
+    color:var(--text);
+    border:1px solid var(--border);
+    padding:11px 18px;
+    border-radius:8px;
+    cursor:pointer;
+    transition:border-color .2s ease, transform .15s ease;
+  }
+  .btn:hover{ border-color:var(--cyan); }
+  .btn:active{ transform:scale(0.97); }
+  .toggle{
+    display:flex; align-items:center; gap:9px;
+    font-family:'Space Mono', monospace;
+    font-size:12px; color:var(--text-muted);
+  }
+  .switch{
+    width:34px; height:19px; border-radius:99px;
+    background:var(--panel-2); border:1px solid var(--border);
+    position:relative; cursor:pointer; flex-shrink:0;
+  }
+  .switch::after{
+    content:''; position:absolute; top:2px; left:2px;
+    width:13px; height:13px; border-radius:50%;
+    background:var(--text-muted); transition:.2s ease;
+  }
+  .switch.active{ border-color:var(--cyan); }
+  .switch.active::after{ transform:translateX(15px); background:var(--cyan); }
+
+  /* ---------- SECTIONS ---------- */
+  section{ padding:70px 0; border-top:1px solid var(--border); }
+  .section-head{ margin-bottom:36px; }
+  .section-num{
+    font-family:'Space Mono', monospace;
+    font-size:11px; color:var(--cyan); letter-spacing:0.12em;
+    margin-bottom:8px;
+  }
+  h2{
+    font-family:'Space Mono', monospace;
+    font-size:26px;
+    font-weight:700;
+  }
+  .section-sub{ color:var(--text-muted); margin-top:8px; max-width:52ch; font-size:14.5px; }
+
+  /* ---------- SIGNAL FLOW DIAGRAM ---------- */
+  .flow{
+    display:flex; align-items:center; justify-content:space-between;
+    gap:0;
+    padding:36px 10px;
+    flex-wrap:wrap;
+  }
+  .node{
+    display:flex; flex-direction:column; align-items:center; gap:10px;
+    width:130px;
+    text-align:center;
+  }
+  .node .icon{
+    width:64px; height:64px; border-radius:12px;
+    background:var(--panel-2); border:1px solid var(--border);
+    display:flex; align-items:center; justify-content:center;
+    transition:border-color .3s ease, box-shadow .3s ease;
+  }
+  .node .icon svg{ width:30px; height:30px; }
+  .node .step{ font-family:'Space Mono', monospace; font-size:10.5px; color:var(--cyan); letter-spacing:.08em; }
+  .node .name{ font-size:13px; font-weight:600; }
+  .node .desc{ font-size:11.5px; color:var(--text-muted); }
+
+  .wire{
+    flex:1; min-width:40px; height:2px; background:var(--wire);
+    position:relative; margin:0 4px; top:-30px;
+    align-self:center;
+  }
+  .wire .pulse{
+    position:absolute; top:50%; left:0;
+    width:8px; height:8px; margin-top:-4px;
+    border-radius:50%; background:var(--cyan);
+    box-shadow:0 0 8px var(--cyan);
+    opacity:0;
+  }
+  .wire.run .pulse{ animation:flow 1s ease forwards; }
+  .wire2.run .pulse{ animation-delay:1s; }
+  .wire3.run .pulse{ animation-delay:2s; }
+  @keyframes flow{
+    0%{ left:0; opacity:1; }
+    90%{ opacity:1; }
+    100%{ left:calc(100% - 8px); opacity:0; }
+  }
+  .node.lit .icon{ border-color:var(--cyan); box-shadow:0 0 18px rgba(94,234,212,0.25); }
+
+  @media (max-width:700px){
+    .flow{ flex-direction:column; }
+    .wire{ width:2px; height:36px; top:0; transform:rotate(0); }
+    .wire .pulse{ left:50%; top:0; margin-left:-4px; }
+    @keyframes flow{
+      0%{ top:0; opacity:1; }
+      90%{ opacity:1; }
+      100%{ top:calc(100% - 8px); opacity:0; }
+    }
+  }
+
+  /* ---------- COMPONENTS ---------- */
+  .comp-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(210px,1fr));
+    gap:1px;
+    background:var(--border);
+    border:1px solid var(--border);
+    border-radius:10px;
+    overflow:hidden;
+  }
+  .comp{
+    background:var(--panel);
+    padding:20px;
+  }
+  .comp .tag{
+    font-family:'Space Mono', monospace;
+    font-size:10px; color:var(--text-muted);
+    letter-spacing:.1em; text-transform:uppercase;
+  }
+  .comp .title{ font-weight:600; margin-top:6px; font-size:14.5px; }
+  .comp .role{ font-size:12.5px; color:var(--text-muted); margin-top:6px; }
+
+  /* ---------- CODE ---------- */
+  .code-block{
+    background:#0d1017;
+    border:1px solid var(--border);
+    border-radius:10px;
+    overflow:hidden;
+  }
+  .code-top{
+    display:flex; align-items:center; gap:8px;
+    padding:11px 16px;
+    border-bottom:1px solid var(--border);
+    font-family:'Space Mono', monospace;
+    font-size:11.5px; color:var(--text-muted);
+  }
+  .code-top .d{ width:9px; height:9px; border-radius:50%; background:#2a3140; }
+  pre{
+    font-family:'Space Mono', monospace;
+    font-size:12.5px;
+    line-height:1.7;
+    padding:20px;
+    overflow-x:auto;
+    color:#c9d1e0;
+  }
+  .kw{ color:#ff9d5c; } .fn{ color:var(--cyan); } .cm{ color:#5a6478; } .num{ color:var(--amber); }
+
+  /* ---------- FOOTER ---------- */
+  footer{
+    border-top:1px solid var(--border);
+    padding:36px 0 50px;
+    font-family:'Space Mono', monospace;
+    font-size:11.5px;
+    color:var(--text-muted);
+    display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px;
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ animation-duration:0.01ms !important; transition-duration:0.01ms !important; }
+  }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="navrow">
+    <div class="brand"><span class="dot"></span> IOT-DEMO // MOTION-LIGHT</div>
+    <nav class="links">
+      <a href="#simulate">Simulate</a>
+      <a href="#flow">How it works</a>
+      <a href="#hardware">Hardware</a>
+      <a href="#software">Software</a>
+    </nav>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <section class="hero" id="simulate">
+    <div class="eyebrow">Hardware + Software Demo</div>
+    <h1>Walk in. The room <span>lights itself.</span></h1>
+    <p class="lede">
+      A PIR motion sensor watches a space for movement. The moment it senses something,
+      a microcontroller flips a pin, and a connected LED — or lightbulb through a relay —
+      switches on automatically. No switch. No app. Just presence.
+    </p>
+    <p class="disclaimer">FOR DEMONSTRATION PURPOSES ONLY — this page simulates sensor behavior in software; no physical hardware is connected.</p>
+
+    <div class="stage-wrap">
+      <div class="stage" id="stage">
+        <span class="hint">click anywhere in the room to simulate motion</span>
+        <div class="glow"></div>
+        <div class="bulb-holder">
+          <svg class="bulb" viewBox="0 0 60 90">
+            <path class="glass" d="M30 4 C14 4 4 16 4 30 C4 42 12 48 16 56 L16 66 L44 66 L44 56 C48 48 56 42 56 30 C56 16 46 4 30 4 Z"/>
+            <path class="filament" d="M22 30 L38 44 M38 30 L22 44"/>
+            <rect class="base" x="18" y="66" width="24" height="16" rx="2"/>
+            <rect class="base" x="18" y="84" width="24" height="5" rx="1.5"/>
+          </svg>
+          <div class="bulb-label">LED / lightbulb — off</div>
+        </div>
+        <div class="sensor">
+          <div class="sensor-icon">
+            <span class="ring"></span>
+            <span class="ring r2"></span>
+            <span class="ring r3"></span>
+            <svg viewBox="0 0 46 46">
+              <circle class="dome" cx="23" cy="23" r="16"/>
+              <circle cx="23" cy="23" r="4" fill="#5a6478"/>
+            </svg>
+          </div>
+          <div class="sensor-label">PIR sensor</div>
+        </div>
+      </div>
+      <div class="console" id="console"></div>
+      <div class="controls">
+        <button class="btn" id="triggerBtn">▸ Simulate motion</button>
+        <div class="toggle">
+          Auto demo
+          <span class="switch" id="autoSwitch"></span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="flow">
+    <div class="section-head">
+      <div class="section-num">01 — Signal path</div>
+      <h2>Four steps, one straight line</h2>
+      <p class="section-sub">The whole project is a short chain of cause and effect. Trigger the simulation above, then watch the same sequence trace across the diagram below.</p>
+    </div>
+
+    <div class="flow" id="flowDiagram">
+      <div class="node" id="n1">
+        <span class="step">STEP 1</span>
+        <div class="icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#8a94a6" stroke-width="1.6"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2" fill="#8a94a6"/></svg>
+        </div>
+        <div class="name">Sensor detects</div>
+        <div class="desc">PIR module senses a change in infrared movement.</div>
+      </div>
+
+      <div class="wire wire1" id="w1"><span class="pulse"></span></div>
+
+      <div class="node" id="n2">
+        <span class="step">STEP 2</span>
+        <div class="icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#8a94a6" stroke-width="1.6"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h6v6H9z"/></svg>
+        </div>
+        <div class="name">Microcontroller reads</div>
+        <div class="desc">The board reads a HIGH signal on the input pin.</div>
+      </div>
+
+      <div class="wire wire2" id="w2"><span class="pulse"></span></div>
+
+      <div class="node" id="n3">
+        <span class="step">STEP 3</span>
+        <div class="icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#8a94a6" stroke-width="1.6"><path d="M4 12h6l2-6 4 12 2-6h2"/></svg>
+        </div>
+        <div class="name">Output triggers</div>
+        <div class="desc">Logic sets the output pin HIGH to drive the LED.</div>
+      </div>
+
+      <div class="wire wire3" id="w3"><span class="pulse"></span></div>
+
+      <div class="node" id="n4">
+        <span class="step">STEP 4</span>
+        <div class="icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#8a94a6" stroke-width="1.6"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3 11c1 .7 1 2 1 2h4s0-1.3 1-2a6 6 0 0 0-3-11z"/></svg>
+        </div>
+        <div class="name">Light turns on</div>
+        <div class="desc">LED — or lightbulb via relay — switches on.</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="hardware">
+    <div class="section-head">
+      <div class="section-num">02 — Bill of materials</div>
+      <h2>What's on the breadboard</h2>
+      <p class="section-sub">A minimal parts list — everything this demo needs to work as physical hardware.</p>
+    </div>
+    <div class="comp-grid">
+      <div class="comp">
+        <div class="tag">Input</div>
+        <div class="title">PIR Motion Sensor</div>
+        <div class="role">Detects infrared movement in its field of view and outputs a digital HIGH/LOW signal (e.g. HC-SR501).</div>
+      </div>
+      <div class="comp">
+        <div class="tag">Brain</div>
+        <div class="title">Microcontroller</div>
+        <div class="role">Arduino Uno or ESP8266/ESP32 — reads the sensor pin and controls the output pin.</div>
+      </div>
+      <div class="comp">
+        <div class="tag">Output</div>
+        <div class="title">LED or Relay + Lightbulb</div>
+        <div class="role">A simple LED for a bench demo, or a relay module switching a mains lightbulb.</div>
+      </div>
+      <div class="comp">
+        <div class="tag">Support</div>
+        <div class="title">Resistor (220Ω)</div>
+        <div class="role">Current-limiting resistor in series with the LED to protect it and the board.</div>
+      </div>
+      <div class="comp">
+        <div class="tag">Support</div>
+        <div class="title">Breadboard + Jumper Wires</div>
+        <div class="role">Prototyping platform and connections between sensor, board, and output.</div>
+      </div>
+      <div class="comp">
+        <div class="tag">Power</div>
+        <div class="title">5V Power Supply</div>
+        <div class="role">USB power bank or wall adapter powering the microcontroller and sensor.</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="software">
+    <div class="section-head">
+      <div class="section-num">03 — Logic</div>
+      <h2>The sketch behind it</h2>
+      <p class="section-sub">The software side is intentionally small: read one pin, drive another.</p>
+    </div>
+    <div class="code-block">
+      <div class="code-top"><span class="d"></span><span class="d"></span><span class="d"></span>&nbsp;&nbsp;motion_light.ino</div>
+      <pre><span class="kw">const int</span> PIR_PIN = 2;
+<span class="kw">const int</span> LED_PIN = 13;
+
+<span class="kw">void</span> <span class="fn">setup</span>() {
+  <span class="fn">pinMode</span>(PIR_PIN, INPUT);
+  <span class="fn">pinMode</span>(LED_PIN, OUTPUT);
+}
+
+<span class="kw">void</span> <span class="fn">loop</span>() {
+  <span class="kw">int</span> motionDetected = <span class="fn">digitalRead</span>(PIR_PIN);
+
+  <span class="kw">if</span> (motionDetected == HIGH) {
+    <span class="fn">digitalWrite</span>(LED_PIN, HIGH);  <span class="cm">// turn light on</span>
+  } <span class="kw">else</span> {
+    <span class="fn">digitalWrite</span>(LED_PIN, LOW);   <span class="cm">// turn light off</span>
+  }
+}</pre>
+    </div>
+  </section>
+
+  <footer>
+    <span>IoT Motion Sensor Demo — for demonstration purposes only</span>
+    <span>Simulated in-browser · no live hardware connected</span>
+  </footer>
+
+</div>
+
+<script>
+  const stage = document.getElementById('stage');
+  const triggerBtn = document.getElementById('triggerBtn');
+  const autoSwitch = document.getElementById('autoSwitch');
+  const consoleEl = document.getElementById('console');
+  const wires = [document.getElementById('w1'), document.getElementById('w2'), document.getElementById('w3')];
+  const nodes = [document.getElementById('n1'), document.getElementById('n2'), document.getElementById('n3'), document.getElementById('n4')];
+
+  let offTimer = null;
+  let autoTimer = null;
+  let autoOn = false;
+
+  function timestamp(){
+    const d = new Date();
+    return d.toTimeString().split(' ')[0];
+  }
+
+  function log(type, message){
+    const row = document.createElement('div');
+    row.className = 'row ' + type;
+    row.innerHTML = '<span class="t">[' + timestamp() + ']</span><span class="m">' + message + '</span>';
+    consoleEl.appendChild(row);
+    consoleEl.scrollTop = consoleEl.scrollHeight;
+    while(consoleEl.children.length > 30){ consoleEl.removeChild(consoleEl.firstChild); }
+  }
+
+  function runFlowAnimation(){
+    wires.forEach(w => {
+      w.classList.remove('run');
+      void w.offsetWidth;
+      w.classList.add('run');
+    });
+    nodes.forEach((n, i) => {
+      setTimeout(() => n.classList.add('lit'), i * 1000);
+    });
+    setTimeout(() => nodes.forEach(n => n.classList.remove('lit')), 4200);
+  }
+
+  function triggerMotion(){
+    log('motion', 'PIR_PIN → HIGH  (motion detected)');
+    stage.classList.add('on');
+    document.querySelector('.bulb-label').textContent = 'LED / lightbulb — on';
+    log('on', 'LED_PIN → HIGH  (light on)');
+    runFlowAnimation();
+
+    clearTimeout(offTimer);
+    offTimer = setTimeout(() => {
+      stage.classList.remove('on');
+      document.querySelector('.bulb-label').textContent = 'LED / lightbulb — off';
+      log('off', 'LED_PIN → LOW  (no motion / light off)');
+    }, 3500);
+  }
+
+  stage.addEventListener('click', triggerMotion);
+  triggerBtn.addEventListener('click', (e) => { e.stopPropagation(); triggerMotion(); });
+
+  autoSwitch.addEventListener('click', () => {
+    autoOn = !autoOn;
+    autoSwitch.classList.toggle('active', autoOn);
+    if(autoOn){
+      log('motion', 'auto demo enabled');
+      autoTimer = setInterval(triggerMotion, 5000);
+      triggerMotion();
+    } else {
+      log('off', 'auto demo disabled');
+      clearInterval(autoTimer);
+    }
+  });
+
+  log('off', 'system idle — waiting for motion');
+</script>
+
+</body>
+</html>

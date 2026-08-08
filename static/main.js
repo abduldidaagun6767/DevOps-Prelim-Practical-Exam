@@ -53,6 +53,19 @@ function renderLatest(){
   // update stat card
   document.getElementById('stat-temp').textContent = `${mockLatest.temp} °C`;
   document.getElementById('stat-status').textContent = mockDevice.status === 'ON' ? 'ONLINE' : 'OFFLINE';
+  // improve badge styles for status
+  const badgeEl = document.getElementById('sensor-status');
+  if(mockLatest.status === 'motion'){
+    badgeEl.className = 'badge badge-motion';
+    badgeEl.style.background = 'linear-gradient(90deg,var(--accent) 0%, #2ac0a4 100%)';
+    badgeEl.style.color = '#042226';
+    badgeEl.textContent = 'Status: MOTION';
+  } else {
+    badgeEl.className = 'badge badge-idle';
+    badgeEl.style.background = 'rgba(255,255,255,0.04)';
+    badgeEl.style.color = 'var(--muted-2)';
+    badgeEl.textContent = 'Status: IDLE';
+  }
 }
 
 function renderHistory(){

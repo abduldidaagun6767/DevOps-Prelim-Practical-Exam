@@ -32,8 +32,14 @@ function renderChart(data){
   const values = data.map(d => d.value).reverse();
   if(chart) chart.destroy();
   chart = new Chart(ctx, {
-    type: 'line', data: { labels, datasets: [{ label: 'Motion', data: values, borderColor: '#5eead4', backgroundColor: 'rgba(94,234,212,0.08)', tension:0.3, fill:true }] },
-    options: { responsive:true, scales:{ y:{ beginAtZero:true, ticks:{ stepSize:1 } } } }
+    type: 'line', data: { labels, datasets: [{ label: 'Motion', data: values, borderColor: '#4fd1c5', backgroundColor: 'rgba(79,209,197,0.08)', tension:0.35, fill:true, pointRadius:3, pointHoverRadius:6 }] },
+    options: {
+      responsive:true,
+      maintainAspectRatio:false,
+      plugins:{ legend:{ display:false }, tooltip:{ mode:'index', intersect:false } },
+      interaction:{ mode:'index', intersect:false },
+      scales:{ y:{ beginAtZero:true, ticks:{ stepSize:1, color:'#9fb3c8' }, grid: { color: 'rgba(255,255,255,0.03)' } }, x:{ ticks:{ color:'#9fb3c8' }, grid:{ display:false } } }
+    }
   });
 }
 

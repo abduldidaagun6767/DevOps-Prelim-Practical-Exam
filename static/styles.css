@@ -1,17 +1,18 @@
 :root{
-	--bg:#0f1720; --card:#0b1320; --muted:#94a3b8; --accent:#5eead4; --accent-2:#ffc157; --surface:#0b1320;
+	--bg:#071021; --card:#071427; --muted:#9fb3c8; --accent:#4fd1c5; --accent-2:#ffbf69; --surface:#071427;
 }
 *{box-sizing:border-box}
+.body-bg{ background: linear-gradient(180deg, #04101a 0%, #071426 100%); }
 body{ font-family:Inter, Arial, sans-serif; background:var(--bg); color:#e6eef6; margin:0; -webkit-font-smoothing:antialiased }
-.container{ max-width:1100px; margin:20px auto; padding:18px }
+.container{ max-width:1140px; margin:24px auto; padding:20px }
 .header{ display:flex; justify-content:space-between; align-items:center; gap:12px }
 .brand h1{ margin:0; font-family: 'Space Mono', monospace; font-size:20px }
 .brand .subtitle{ margin:0; color:var(--muted); font-size:13px }
 .icon-btn{ background:transparent; border:1px solid rgba(255,255,255,0.04); color:inherit; padding:6px 8px; border-radius:8px; cursor:pointer }
 .grid{ display:grid; grid-template-columns: 1fr 340px; gap:18px; margin-top:18px }
-.card{ background:var(--card); padding:14px; border-radius:12px }
+.card{ background:var(--card); padding:16px; border-radius:14px; box-shadow: 0 6px 18px rgba(3,8,15,0.6); border:1px solid rgba(255,255,255,0.02) }
 .card-head{ display:flex; justify-content:space-between; align-items:center; margin-bottom:12px }
-.latest-card .value{ font-size:42px; font-weight:700; color:var(--accent-2) }
+.latest-card .value{ font-size:44px; font-weight:700; color:var(--accent-2); letter-spacing:0.02em }
 .meta{ color:var(--muted); margin-top:8px }
 .timestamp{ color:var(--muted); margin-top:10px; font-size:13px }
 .status{ margin-top:10px }
@@ -19,11 +20,15 @@ body{ font-family:Inter, Arial, sans-serif; background:var(--bg); color:#e6eef6;
 .buttons{ display:flex; gap:10px }
 .btn{ padding:10px 14px; border-radius:8px; border:none; cursor:pointer; background:#1f2937; color:inherit }
 .btn.primary{ background:var(--accent) }
-.history-card .chart-wrap{ height:220px }
+.history-card .chart-wrap{ height:260px }
+.chart-wrap canvas{ width:100% !important; height:260px !important }
 .history-table-wrap{ margin-top:12px; max-height:220px; overflow:auto }
 .history-table{ width:100%; border-collapse:collapse }
 .history-table th, .history-table td{ text-align:left; padding:8px; border-bottom:1px solid rgba(255,255,255,0.03); font-size:13px }
 .empty{ color:var(--muted); padding:10px; text-align:center }
+.display-5{ color:var(--accent-2) }
+.badge-motion{ background: linear-gradient(90deg,var(--accent) 0%, #2ac0a4 100%); color: #042226 }
+.badge-idle{ background: rgba(255,255,255,0.04); color:var(--muted) }
 .loader.small{ width:18px; height:18px; border-radius:50%; border:2px solid rgba(255,255,255,0.06); border-top-color:var(--accent); animation:spin 1s linear infinite; display:none }
 
 @keyframes spin{ to{ transform:rotate(360deg) } }

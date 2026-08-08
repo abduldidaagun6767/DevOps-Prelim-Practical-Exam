@@ -14,7 +14,7 @@ const sensorLastSeenEl = document.getElementById('sensor-lastseen');
 
 // Mock data
 let mockLatest = {
-  sensor: 'PIR-01', value: 1, unit: '', timestamp: new Date().toISOString(), status: 'motion'
+  sensor: 'PIR-01', value: 1, unit: '°C', timestamp: new Date().toISOString(), status: 'motion', temp: 28.5
 };
 
 let mockHistory = Array.from({length:12}).map((_,i)=>{
@@ -50,6 +50,9 @@ function renderLatest(){
   sensorTimestampEl.textContent = new Date(mockLatest.timestamp).toLocaleString();
   sensorStatusEl.textContent = `Status: ${mockLatest.status}`;
   sensorLastSeenEl.textContent = new Date(mockLatest.timestamp).toLocaleString();
+  // update stat card
+  document.getElementById('stat-temp').textContent = `${mockLatest.temp} °C`;
+  document.getElementById('stat-status').textContent = mockDevice.status === 'ON' ? 'ONLINE' : 'OFFLINE';
 }
 
 function renderHistory(){

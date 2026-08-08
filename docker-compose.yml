@@ -1,0 +1,19 @@
+version: '3.8'
+services:
+  web:
+    build: .
+    ports:
+      - '8000:8000'
+    volumes:
+      - .:/app:cached
+    environment:
+      - DATABASE_URL=sqlite:///./data.db
+    depends_on: []
+  mosquitto:
+    image: eclipse-mosquitto:2.0
+    ports:
+      - '1883:1883'
+    volumes:
+      - mosquitto-data:/mosquitto/data
+volumes:
+  mosquitto-data:

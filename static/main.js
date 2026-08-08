@@ -1,0 +1,74 @@
+// UI elements
+const latestValueEl = document.getElementById('latest-value');
+const sensorNameEl = document.getElementById('sensor-name');
+const sensorUnitEl = document.getElementById('sensor-unit');
+const sensorTimestampEl = document.getElementById('sensor-timestamp');
+const sensorStatusEl = document.getElementById('sensor-status');
+const deviceStatusEl = document.getElementById('device-status');
+const historyBody = document.getElementById('history-body');
+const historyEmpty = document.getElementById('history-empty');
+const onBtnEl = document.getElementById('onBtn');
+const offBtnEl = document.getElementById('offBtn');
+const refreshBtn = document.getElementById('refreshBtn');
+
+// Mock data
+let mockLatest = {
+  sensor: 'PIR-01', value: 1, unit: '', timestamp: new Date().toISOString(), status: 'motion'
+};
+
+let mockHistory = Array.from({length:12}).map((_,i)=>{
+  const t = new Date(Date.now() - i*60000);
+  return { sensor: 'PIR-01', value: Math.random()>0.6?1:0, unit:'', timestamp: t.toISOString(), status: Math.random()>0.6?'motion':'idle' };
+});
+
+let mockDevice = { id: 'led-1', status: 'OFF' };
+
+// Chart
+let chart;
+function renderChart(data){
+  const ctx = document.getElementById('historyChart').getContext('2d');
+  const labels = data.map(d => new Date(d.timestamp).toLocaleTimeString()).reverse();
+  const values = data.map(d => d.value).reverse();
+  if(chart) chart.destroy();
+  chart = new Chart(ctx, {
+    type: 'line', data: { labels, datasets: [{ label: 'Motion', data: values, borderColor: '#5eead4', backgroundColor: 'rgba(94,234,212,0.08)', tension:0.3, fill:true }] },
+    options: { responsive:true, scales:{ y:{ beginAtZero:true, ticks:{ stepSize:1 } } } }
+  });
+}
+
+function renderLatest(){
+  latestValueEl.textContent = mockLatest.value === 1 ? 'Motion' : 'No motion';
+  sensorNameEl.textContent = mockLatest.sensor;
+  sensorUnitEl.textContent = mockLatest.unit || '-';
+  sensorTimestampEl.textContent = new Date(mockLatest.timestamp).toLocaleString();
+  sensorStatusEl.textContent = `Status: ${mockLatest.status}`;
+}
+
+function renderHistory(){
+  if(!mockHistory.length){ historyEmpty.style.display='block'; return }
+  historyEmpty.style.display='none';
+  historyBody.innerHTML = '';
+  mockHistory.forEach(h=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${new Date(h.timestamp).toLocaleString()}</td><td>${h.value}</td><td>${h.unit}</td><td>${h.status}</td>`;
+    historyBody.appendChild(tr);
+  });
+  renderChart(mockHistory);
+}
+
+function setDevice(status){
+  mockDevice.status = status;
+  deviceStatusEl.textContent = status;
+  deviceStatusEl.style.color = status==='ON' ? '#5eead4' : 'white';
+}
+
+onBtnEl.addEventListener('click', ()=> setDevice('ON'));
+offBtnEl.addEventListener('click', ()=> setDevice('OFF'));
+refreshBtn.addEventListener('click', ()=> { mockLatest.timestamp = new Date().toISOString(); mockHistory.unshift(mockLatest); if(mockHistory.length>50) mockHistory.pop(); renderLatest(); renderHistory(); });
+
+// Initial render
+renderLatest();
+renderHistory();
+
+// Responsive: resize chart when container changes
+window.addEventListener('resize', ()=> { if(chart) chart.resize() });

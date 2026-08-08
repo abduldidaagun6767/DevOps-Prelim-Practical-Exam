@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>IoT Dashboard — Sensor Monitor</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <div class="brand">
+        <h1>IoT Dashboard</h1>
+        <p class="subtitle">Sensor Monitor — Mock Data</p>
+      </div>
+      <nav class="nav">
+        <button id="refreshBtn" class="icon-btn" title="Refresh">⟳</button>
+      </nav>
+    </header>
+
+    <main class="grid">
+      <section class="card latest-card">
+        <div class="card-head">
+          <h2>Latest Reading</h2>
+          <div id="latest-loading" class="loader small" aria-hidden="true"></div>
+        </div>
+        <div class="latest-content">
+          <div class="value" id="latest-value">—</div>
+          <div class="meta">
+            <div>Sensor: <strong id="sensor-name">—</strong></div>
+            <div>Unit: <strong id="sensor-unit">—</strong></div>
+          </div>
+          <div class="timestamp" id="sensor-timestamp">—</div>
+          <div class="status" id="sensor-status">Status: —</div>
+        </div>
+      </section>
+
+      <section class="card controls-card">
+        <div class="card-head"><h2>Output Control</h2></div>
+        <div class="controls-column">
+          <div class="device-status">Current: <span id="device-status">OFF</span></div>
+          <div class="buttons">
+            <button id="onBtn" class="btn primary">Turn ON</button>
+            <button id="offBtn" class="btn">Turn OFF</button>
+          </div>
+          <div class="note">Controls are mock-only (no backend)</div>
+        </div>
+      </section>
+
+      <section class="card history-card">
+        <div class="card-head"><h2>History</h2></div>
+        <div class="chart-wrap">
+          <canvas id="historyChart" aria-label="Sensor history chart" role="img"></canvas>
+        </div>
+        <div class="history-table-wrap">
+          <table class="history-table">
+            <thead><tr><th>Time</th><th>Value</th><th>Unit</th><th>Status</th></tr></thead>
+            <tbody id="history-body"></tbody>
+          </table>
+          <div id="history-empty" class="empty">No historical readings</div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div>Mock frontend — no backend connected yet</div>
+    </footer>
+  </div>
+
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="/static/main.js"></script>
+</body>
+</html>

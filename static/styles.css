@@ -1,0 +1,35 @@
+:root{
+	--bg:#0f1720; --card:#0b1320; --muted:#94a3b8; --accent:#5eead4; --accent-2:#ffc157; --surface:#0b1320;
+}
+*{box-sizing:border-box}
+body{ font-family:Inter, Arial, sans-serif; background:var(--bg); color:#e6eef6; margin:0; -webkit-font-smoothing:antialiased }
+.container{ max-width:1100px; margin:20px auto; padding:18px }
+.header{ display:flex; justify-content:space-between; align-items:center; gap:12px }
+.brand h1{ margin:0; font-family: 'Space Mono', monospace; font-size:20px }
+.brand .subtitle{ margin:0; color:var(--muted); font-size:13px }
+.icon-btn{ background:transparent; border:1px solid rgba(255,255,255,0.04); color:inherit; padding:6px 8px; border-radius:8px; cursor:pointer }
+.grid{ display:grid; grid-template-columns: 1fr 340px; gap:18px; margin-top:18px }
+.card{ background:var(--card); padding:14px; border-radius:12px }
+.card-head{ display:flex; justify-content:space-between; align-items:center; margin-bottom:12px }
+.latest-card .value{ font-size:42px; font-weight:700; color:var(--accent-2) }
+.meta{ color:var(--muted); margin-top:8px }
+.timestamp{ color:var(--muted); margin-top:10px; font-size:13px }
+.status{ margin-top:10px }
+.controls-card .device-status{ font-weight:600; margin-bottom:12px }
+.buttons{ display:flex; gap:10px }
+.btn{ padding:10px 14px; border-radius:8px; border:none; cursor:pointer; background:#1f2937; color:inherit }
+.btn.primary{ background:var(--accent) }
+.history-card .chart-wrap{ height:220px }
+.history-table-wrap{ margin-top:12px; max-height:220px; overflow:auto }
+.history-table{ width:100%; border-collapse:collapse }
+.history-table th, .history-table td{ text-align:left; padding:8px; border-bottom:1px solid rgba(255,255,255,0.03); font-size:13px }
+.empty{ color:var(--muted); padding:10px; text-align:center }
+.loader.small{ width:18px; height:18px; border-radius:50%; border:2px solid rgba(255,255,255,0.06); border-top-color:var(--accent); animation:spin 1s linear infinite; display:none }
+
+@keyframes spin{ to{ transform:rotate(360deg) } }
+
+/* Responsive */
+@media (max-width:900px){
+	.grid{ grid-template-columns: 1fr; }
+	.latest-card .value{ font-size:34px }
+}

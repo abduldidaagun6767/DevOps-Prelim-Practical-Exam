@@ -63,6 +63,11 @@ body{ font-family: Inter, 'Segoe UI', Roboto, Arial, sans-serif; background:var(
 
 /* Improve small screen spacing for buttons */
 @media (max-width:480px){ .d-flex.gap-2{ flex-direction:column } .d-flex.gap-2 .btn{ width:100% } }
+
+/* Output control "Current" status readability */
+#device-status{ color:var(--accent); font-weight:800; text-transform:uppercase; letter-spacing:0.04em; font-size:1rem; display:inline-block; margin-left:6px }
+/* When device is OFF, use muted color for clarity */
+.device-off{ color:rgba(255,255,255,0.6) }
 .loader.small{ width:18px; height:18px; border-radius:50%; border:2px solid rgba(255,255,255,0.06); border-top-color:var(--accent); animation:spin 1s linear infinite; display:none }
 
 @keyframes spin{ to{ transform:rotate(360deg) } }

@@ -18,7 +18,7 @@ body{ font-family: Inter, 'Segoe UI', Roboto, Arial, sans-serif; background:var(
 .brand .subtitle{ margin:0; color:var(--muted); font-size:13px }
 .icon-btn{ background:transparent; border:1px solid rgba(255,255,255,0.04); color:inherit; padding:6px 8px; border-radius:8px; cursor:pointer }
 .grid{ display:grid; grid-template-columns: 1fr 340px; gap:18px; margin-top:18px }
-.card{ background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); padding:16px; border-radius:14px; box-shadow: 0 10px 30px rgba(2,6,12,0.6); border:1px solid rgba(255,255,255,0.03) }
+.card{ background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); padding:16px; border-radius:14px; box-shadow: 0 10px 30px rgba(2,6,12,0.6); border:1px solid rgba(255,255,255,0.04); backdrop-filter: blur(4px) }
 .stat-card{ border-radius:12px; padding:18px; text-align:center; background:transparent }
 .stat-value{ font-size:28px; font-weight:700; color:var(--text) }
 .stat-label{ color:var(--muted-2); font-size:13px }
@@ -35,8 +35,14 @@ body{ font-family: Inter, 'Segoe UI', Roboto, Arial, sans-serif; background:var(
 .status{ margin-top:10px }
 .controls-card .device-status{ font-weight:600; margin-bottom:12px }
 .buttons{ display:flex; gap:10px }
-.btn{ padding:10px 14px; border-radius:8px; border:none; cursor:pointer; background:#1f2937; color:inherit }
-.btn.primary{ background:var(--accent) }
+.btn{ padding:10px 14px; border-radius:8px; border:none; cursor:pointer }
+.btn:not(.btn-success):not(.btn-outline-secondary):not(.btn-cyan):not(.btn-primary){ background: rgba(255,255,255,0.02); color:var(--text); border:1px solid rgba(255,255,255,0.03) }
+.btn.primary{ background:var(--accent); color:#032725 }
+
+/* Make Bootstrap semantic buttons more visible on dark background */
+.btn-success{ background: linear-gradient(180deg,#28c76f,#25b86a) !important; color:#042226 !important; border:none !important; box-shadow:0 8px 20px rgba(40,199,111,0.12) }
+.btn-outline-secondary{ background: rgba(255,255,255,0.02) !important; color:var(--text) !important; border:1px solid rgba(255,255,255,0.06) !important }
+.btn-cyan{ background:var(--accent); color:#032725; border:none; box-shadow:0 8px 20px rgba(54,214,199,0.12) }
 .history-card .chart-wrap{ height:260px }
 .chart-wrap canvas{ width:100% !important; height:260px !important }
 .history-table-wrap{ margin-top:12px; max-height:220px; overflow:auto }
@@ -46,6 +52,17 @@ body{ font-family: Inter, 'Segoe UI', Roboto, Arial, sans-serif; background:var(
 .display-5{ color:var(--accent-2) }
 .badge-motion{ background: linear-gradient(90deg,var(--accent) 0%, #2ac0a4 100%); color: #042226 }
 .badge-idle{ background: rgba(255,255,255,0.04); color:var(--muted) }
+
+/* Sensor info readability */
+.card dl dt{ color:var(--muted-2); font-weight:600 }
+.card dl dd{ color:var(--text); margin-bottom:6px; font-weight:600 }
+
+/* Latest reading emphasis */
+.display-5{ color:var(--accent-2); font-weight:700 }
+#latest-value{ font-size:48px }
+
+/* Improve small screen spacing for buttons */
+@media (max-width:480px){ .d-flex.gap-2{ flex-direction:column } .d-flex.gap-2 .btn{ width:100% } }
 .loader.small{ width:18px; height:18px; border-radius:50%; border:2px solid rgba(255,255,255,0.06); border-top-color:var(--accent); animation:spin 1s linear infinite; display:none }
 
 @keyframes spin{ to{ transform:rotate(360deg) } }

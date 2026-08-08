@@ -10,6 +10,7 @@ const historyEmpty = document.getElementById('history-empty');
 const onBtnEl = document.getElementById('onBtn');
 const offBtnEl = document.getElementById('offBtn');
 const refreshBtn = document.getElementById('refreshBtn');
+const sensorLastSeenEl = document.getElementById('sensor-lastseen');
 
 // Mock data
 let mockLatest = {
@@ -42,6 +43,7 @@ function renderLatest(){
   sensorUnitEl.textContent = mockLatest.unit || '-';
   sensorTimestampEl.textContent = new Date(mockLatest.timestamp).toLocaleString();
   sensorStatusEl.textContent = `Status: ${mockLatest.status}`;
+  sensorLastSeenEl.textContent = new Date(mockLatest.timestamp).toLocaleString();
 }
 
 function renderHistory(){

@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>IoT Motion Dashboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<style>
+  body { background: #0f172a; color: #e2e8f0; font-family: 'Segoe UI', sans-serif; }
+  .card { background: #1e293b; border: none; border-radius: 14px; }
+  .status-dot { width: 18px; height: 18px; border-radius: 50%; display: inline-block; margin-right: 8px; }
+  .dot-on { background: #22c55e; box-shadow: 0 0 12px #22c55e; }
+  .dot-off { background: #475569; }
+  .badge-motion { font-size: 1rem; padding: .5em 1em; }
+  .radar-card { overflow: hidden; }
+  .radar-wrap { display: flex; align-items: center; justify-content: center; padding-top: .5rem; }
+  /* Realistic radar display: canvas-based for smooth animation */
+  .radar-display {
+    position: relative; width: 100%; min-width: 140px; max-width: 220px; aspect-ratio: 1/1; border-radius: 50%;
+    background: radial-gradient(circle at center, rgba(2,6,23,0.9), rgba(6,10,20,0.85) 40%, rgba(2,6,23,0.95));
+    border: 1px solid rgba(125,211,252,0.06); box-shadow: inset 0 0 30px rgba(14,165,233,0.04), 0 0 18px rgba(14,165,233,0.03);
+    display: flex; align-items: center; justify-content: center; overflow: hidden;
+  }
+  .radar-canvas {
+    width: 100%; height: 100%; display: block; border-radius: 50%;
+  }
+  /* Subtle vignette overlay to match UI */
+  .radar-overlay {
+    position: absolute; inset: 0; border-radius: 50%; pointer-events: none;
+    background-image: radial-gradient(circle at center, rgba(0,0,0,0) 45%, rgba(0,0,0,0.25) 100%);
+    mix-blend-mode: multiply; opacity: 0.35;
+  }
+  /* Responsive tweaks */
+  @media (max-width: 576px) {
+    .radar-display { max-width: 180px; min-width: 120px; }
+    .radar-overlay { opacity: 0.2; }
+    .badge-motion { font-size: 0.9rem; padding: .35em .8em; }
+  }
+  .radar-glow { filter: drop-shadow(0 0 6px rgba(34,197,94,0.9)); }
+
+  @keyframes radarSweep {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+  .step-card { background: linear-gradient(180deg, rgba(30,41,59,0.92), rgba(15,23,42,0.92)); border: 1px solid rgba(148, 163, 184, 0.15); border-radius: 14px; padding: 1rem; height: 100%; box-shadow: 0 10px 22px rgba(15, 23, 42, 0.25); }
+  .step-icon { display: inline-flex; align-items: center; justify-content: center; width: 42px; height: 42px; border-radius: 12px; background: rgba(56, 189, 248, 0.15); color: #7dd3fc; font-size: 1.25rem; margin-bottom: 0.85rem; }
+  .step-number { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; background: #38bdf8; color: #082f49; font-weight: 700; margin-bottom: 0.75rem; }
+  .intro-box { background: linear-gradient(180deg, rgba(30,41,59,0.92), rgba(15, 23, 42, 0.92)); border: 1px solid rgba(148, 163, 184, 0.15); border-radius: 14px; padding: 1rem 1.25rem; box-shadow: 0 10px 22px rgba(15, 23, 42, 0.25);}
+  .mini-flow { display: flex; align-items: center; justify-content: center; gap: .5rem; flex-wrap: wrap; color: #cbd5e1; }
+  .mini-flow span { background: rgba(148,163,184,0.08); border: 1px solid rgba(148,163,184,0.12); border-radius: 999px; padding: .35rem .7rem; }
+  .intro-box p, .step-card h6, .step-card p { color: #e2e8f0; }
+  .arrow { color: #7dd3fc; font-weight: 700; }
+  table { color: #e2e8f0; }
+  .btn-on { background: #22c55e; border: none; }
+  .btn-off { background: #ef4444; border: none; }
+  h1 { font-weight: 600; }
+  .muted { color: #94a3b8; }
+.state-text-muted { color: #94a3b8 !important; }
+
+/* Responsive layout: stack columns on tablet/mobile and ensure radar stays circular */
+@media (max-width: 992px) {
+  /* Make the two main columns full-width (single column layout) */
+  .row.g-3 { flex-direction: column; }
+  .col-lg-5, .col-lg-7 { flex: 0 0 100%; max-width: 100%; }
+
+  /* Ensure cards and radar have comfortable touch padding */
+  .radar-card, .card.p-4 { margin-bottom: 1rem; padding: 1rem; }
+  .radar-wrap { padding-top: .75rem; padding-bottom: .75rem; }
+  .radar-display { margin: 0 auto; }
+
+  /* Make controls touch-friendly */
+  .btn { padding: .75rem 1rem; font-size: 1rem; }
+  .form-range { touch-action: none; }
+
+  /* Avoid horizontal scrolling for tables and long content */
+  .table-responsive { overflow-x: auto; }
+}
+
+/* Landscape phones: allow a slightly larger radar while keeping layout stacked */
+@media (max-width: 768px) and (orientation: landscape) {
+  .radar-display { max-width: 260px; }
+}
+
+/* Desktop: allow a larger radar size while preserving circular shape */
+@media (min-width: 992px) {
+  .radar-display { max-width: 420px; min-width: 220px; }
+  .radar-wrap { padding-top: 1rem; }
+}
+
+/* Ensure the radar never overlaps other content and scales smoothly */
+.radar-display { box-sizing: border-box; transition: width 240ms ease, max-width 240ms ease, margin 240ms ease; }
+
+.offline-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.38);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.offline-modal-backdrop.show {
+  display: flex;
+}
+
+.offline-modal {
+  position: relative;
+  width: auto;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 0;
+  text-align: center;
+}
+
+.offline-modal-close {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(15, 23, 42, 0.75);
+  color: #e2e8f0;
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(2, 6, 23, 0.25);
+}
+
+.offline-modal-title {
+  color: #f8fafc;
+  font-size: clamp(1.25rem, 2.2vw, 1.85rem);
+  font-weight: 700;
+  margin: 0 0 0.35rem;
+  letter-spacing: 0.02em;
+}
+
+.offline-modal-text {
+  color: #e2e8f0;
+  margin: 0;
+  line-height: 1.5;
+  font-size: 0.98rem;
+  opacity: 0.9;
+}
+</style>
+</head>
+<body class="p-4">
+<div id="offline-modal-backdrop" class="offline-modal-backdrop" aria-live="assertive" aria-modal="true" role="dialog">
+  <div class="offline-modal">
+    <button id="offline-modal-close" class="offline-modal-close" type="button" aria-label="Close offline notification">×</button>
+    <h3 class="offline-modal-title">Device Offline</h3>
+    <p class="offline-modal-text">The PIR sensor is not sending updates right now.</p>
+  </div>
+</div>
+<div class="container">
+  <h1 class="mb-1">IoT Motion Dashboard</h1>
+  <p class="muted mb-4">PIR Sensor + Output Device(ESP32)</p>
+
+  <div class="row g-3">
+    <div class="col-lg-5">
+      <div class="d-flex flex-column gap-3 h-100">
+        <div class="card p-4">
+          <h5 class="muted">Latest Sensor Reading</h5>
+          <div class="d-flex align-items-center mt-2">
+            <span id="motion-badge" class="badge bg-secondary badge-motion">--</span>
+          </div>
+          <p class="mt-3 mb-0 muted">Last updated: <span id="last-updated">--</span></p>
+        </div>
+
+        <div class="card p-4 radar-card">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h5 class="muted mb-0">PIR Radar Scan</h5>
+            <span id="radar-status" class="badge rounded-pill bg-secondary">Standby</span>
+          </div>
+          <div class="radar-wrap">
+            <div id="radar-display" class="radar-display">
+              <canvas id="radar-canvas" class="radar-canvas" aria-label="radar display"></canvas>
+              <div class="radar-overlay"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-7">
+      <div class="card p-4 h-100">
+        <h5 class="muted">Output Device Control</h5>
+        <p class="muted mb-2">Control the connected output device from here — turn it ON or OFF and adjust the brightness. Changes are sent to the server immediately; the ESP device can poll <code>/api/state</code> to read the current target state and brightness.</p>
+        <div class="d-flex align-items-center mt-2 mb-3">
+          <span id="state-dot" class="status-dot dot-off"></span>
+          <span id="state-text" class="md-4">OFF</span>
+        </div>
+        <div class="d-flex gap-2 mb-3">
+          <button class="btn btn-on text-white flex-fill" onclick="setState('ON')">Turn ON</button>
+          <button class="btn btn-off text-white flex-fill" onclick="setState('OFF')">Turn OFF</button>
+        </div>
+        <div class="mb-2">
+          <label for="brightness-slider" class="form-label muted">Brightness: <span id="brightness-value">100</span>%</label>
+          <input id="brightness-slider" type="range" min="0" max="100" value="100" class="form-range" oninput="onBrightnessInput(this.value)" onchange="setBrightness(this.value)">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card p-4 mt-3">
+    <h5 class="muted mb-3">Project Overview</h5>
+    <div class="intro-box mb-3">
+      <p class="muted mb-0"><strong>Remote IoT Motion Monitoring</strong> is a compact smart-home prototype that connects a PIR motion sensor to a live dashboard. The sensor sends motion events to a Flask backend, the backend stores them in SQLite, and the browser refreshes the dashboard automatically so you can track activity in real time.</p>
+  
+      <div class="mini-flow">
+        <span>PIR Sensor</span>
+        <span class="arrow">→</span>
+        <span>Flask API</span>
+        <span class="arrow">→</span>
+        <span>SQLite</span>
+        <span class="arrow">→</span>
+        <span>Live Dashboard</span>
+      </div>
+    </div>
+
+    <h5 class="muted mb-3">How the System Works</h5>
+    <div class="row g-3">
+      <div class="col-md-4">
+        <div class="step-card">
+          <div class="step-number">1</div>
+          <h6>Motion is detected</h6>
+          <p class="muted mb-0">The PIR sensor triggers when movement is seen and sends a reading to the server through <code>/api/sensor</code>.</p>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="step-card">
+          <div class="step-number">2</div>
+          <h6>Server records the event</h6>
+          <p class="muted mb-0">Flask stores the motion state and timestamp in SQLite, then responds with the current output device state.</p>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="step-card">
+          <div class="step-number">3</div>
+          <h6>Dashboard updates live</h6>
+          <p class="muted mb-0">Your browser polls the latest reading and history so the motion badge, timestamp, and control buttons stay in sync.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card p-4 mt-3">
+    <h5 class="muted mb-3">Reading History</h5>
+    <div class="table-responsive">
+      <table class="table table-dark table-sm">
+        <thead>
+          <tr><th>Timestamp</th><th>Motion</th></tr>
+        </thead>
+        <tbody id="history-body">
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+/* Control + brightness (unchanged behavior) */
+async function setState(state) {
+  await fetch('/api/control', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({state})
+  });
+  refreshLatest();
+}
+
+function onBrightnessInput(val) {
+  const disp = document.getElementById('brightness-value');
+  if (disp) disp.textContent = val;
+}
+
+async function setBrightness(value) {
+  await fetch('/api/control', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({brightness: parseInt(value, 10)})
+  });
+  refreshLatest();
+}
+
+/* Motion badge + radar integration */
+let _lastMotion = null;
+let sensorConnected = false;
+
+function renderMotionBadge(motion, isConnected = true) {
+  const el = document.getElementById('motion-badge');
+  const status = document.getElementById('radar-status');
+  const radar = document.getElementById('radar-display');
+
+  if (!isConnected || motion === null || motion === undefined) {
+    el.textContent = 'Device Offline';
+    el.className = 'badge bg-secondary badge-motion';
+    radar.classList.remove('active');
+    status.textContent = 'Offline';
+    status.className = 'badge rounded-pill bg-secondary';
+    return;
+  }
+
+  if (motion === 1) {
+    el.textContent = 'Motion Detected';
+    el.className = 'badge bg-success badge-motion';
+    radar.classList.add('active');
+    status.textContent = 'Motion';
+    status.className = 'badge rounded-pill bg-success';
+  }
+  else {
+    el.textContent = 'No Motion';
+    el.className = 'badge bg-primary badge-motion';
+    radar.classList.remove('active');
+    status.textContent = 'Standby';
+    status.className = 'badge rounded-pill bg-secondary';
+  }
+}
+
+function renderState(state) {
+  const textEl = document.getElementById('state-text');
+  textEl.textContent = state;
+  textEl.classList.add('state-text-muted');
+  const dot = document.getElementById('state-dot');
+  dot.className = 'status-dot ' + (state === 'ON' ? 'dot-on' : 'dot-off');
+}
+
+function renderBrightness(brightness) {
+  const val = (typeof brightness === 'number' ? brightness : (brightness ? parseInt(brightness, 10) : 100));
+  const slider = document.getElementById('brightness-slider');
+  const disp = document.getElementById('brightness-value');
+  if (slider) slider.value = val;
+  if (disp) disp.textContent = val;
+}
+
+/* Radar canvas: rings, crosshair, sweep, and blips */
+const radar = {
+  canvas: null,
+  ctx: null,
+  w: 0,
+  h: 0,
+  cx: 0,
+  cy: 0,
+  r: 0,
+  dpr: window.devicePixelRatio || 1,
+  sweepAngle: 0,
+  sweepSpeed: (2 * Math.PI) / 4.0, // one rotation in ~4s
+  lastTs: null,
+  blips: [] // {angle, dist(0-1), intensity, lastHitTs}
+};
+
+function radarInit() {
+  radar.canvas = document.getElementById('radar-canvas');
+  if (!radar.canvas) return;
+  radar.ctx = radar.canvas.getContext('2d');
+  resizeCanvas();
+
+  // Resize handler (debounced)
+  window.addEventListener('resize', () => {
+    clearTimeout(radar._resizeTO);
+    radar._resizeTO = setTimeout(resizeCanvas, 120);
+  });
+
+  // Touch/click on mobile: add a blip where the user taps (useful for testing)
+  function handlePointer(e) {
+    try {
+      const rect = radar.canvas.getBoundingClientRect();
+      const clientX = (e.touches && e.touches[0]) ? e.touches[0].clientX : e.clientX;
+      const clientY = (e.touches && e.touches[0]) ? e.touches[0].clientY : e.clientY;
+      const x = (clientX - rect.left) * (radar.canvas.width / rect.width) - radar.canvas.width / 2;
+      const y = (clientY - rect.top) * (radar.canvas.height / rect.height) - radar.canvas.height / 2;
+      // Convert to canvas-space normalized distance and angle
+      const angle = Math.atan2(y, x);
+      const distPx = Math.sqrt(x*x + y*y);
+      const maxR = Math.min(radar.canvas.width, radar.canvas.height) * 0.5 * radar.dpr * 0.95;
+      const normalized = Math.min(0.98, Math.max(0.05, distPx / maxR));
+      addBlipAt(angle, normalized);
+    } catch (ex) {
+      console.warn('pointer handler error', ex);
+    }
+    // prevent default so page doesn't scroll on touch
+    if (e.cancelable) e.preventDefault();
+  }
+  radar.canvas.addEventListener('click', handlePointer);
+  radar.canvas.addEventListener('touchend', (ev) => handlePointer(ev.changedTouches ? ev : ev));
+
+  radar.lastTs = performance.now();
+  requestAnimationFrame(animateRadar);
+}
+
+function resizeCanvas() {
+  const c = radar.canvas;
+  const rect = c.getBoundingClientRect();
+  // Cap DPR for mobile to avoid huge canvases that kill performance
+  radar.dpr = Math.min(window.devicePixelRatio || 1, 2);
+  radar.w = Math.max(1, Math.floor(rect.width));
+  radar.h = Math.max(1, Math.floor(rect.height));
+  c.width = Math.floor(radar.w * radar.dpr);
+  c.height = Math.floor(radar.h * radar.dpr);
+  c.style.width = radar.w + 'px';
+  c.style.height = radar.h + 'px';
+  radar.cx = c.width / 2;
+  radar.cy = c.height / 2;
+  radar.r = Math.min(radar.cx, radar.cy) * 0.95;
+  // Adjust sweep speed on small displays for a snappier feel
+  radar.sweepSpeed = (2 * Math.PI) / (radar.r < 120 ? 3.2 : 4.0);
+  if (radar.ctx) radar.ctx.setTransform(radar.dpr, 0, 0, radar.dpr, 0, 0);
+}
+
+function addBlipAt(angleRad, dist) {
+  radar.blips.push({angle: angleRad, dist: Math.max(0.08, Math.min(0.98, dist)), intensity: 0, lastHit: 0});
+  // keep last N blips
+  if (radar.blips.length > 24) radar.blips.shift();
+}
+
+function addRandomBlip() {
+  const angle = Math.random() * Math.PI * 2;
+  const dist = 0.18 + Math.random() * 0.75;
+  addBlipAt(angle, dist);
+}
+
+function drawRings(ctx) {
+  // lower ring count on smaller displays for clarity
+  const rings = radar.r > 120 ? 4 : 3;
+  ctx.save();
+  ctx.translate(radar.cx, radar.cy);
+  ctx.lineWidth = Math.max(0.8, Math.min(1.2, radar.r / 200));
+  for (let i = 1; i <= rings; i++) {
+    const rr = (radar.r * i) / rings;
+    ctx.beginPath();
+    ctx.strokeStyle = 'rgba(125,211,252,' + (0.06 + i * 0.02) + ')';
+    ctx.arc(0, 0, rr, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  // Crosshair (drawn on top, slightly brighter for visibility)
+  ctx.beginPath();
+  ctx.moveTo(-radar.r, 0); ctx.lineTo(radar.r, 0);
+  ctx.moveTo(0, -radar.r); ctx.lineTo(0, radar.r);
+  ctx.strokeStyle = 'rgba(125,211,252,0.20)';
+  ctx.lineWidth = Math.max(1, Math.min(2, radar.r / 160));
+  ctx.stroke();
+
+  // Center reticle
+  ctx.beginPath();
+  ctx.fillStyle = 'rgba(125,211,252,0.95)';
+  const centerDot = Math.max(2, Math.round(radar.r * 0.02));
+  ctx.arc(0, 0, centerDot, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Cardinal labels (N,E,S,W)
+  ctx.fillStyle = 'rgba(148,163,184,0.9)';
+  const fontSize = Math.max(10, Math.round(radar.r * 0.07));
+  ctx.font = `${fontSize}px sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  const labelDist = radar.r * 0.9;
+  ctx.fillText('N', 0, -labelDist);
+  ctx.fillText('E', labelDist, 0);
+  ctx.fillText('S', 0, labelDist);
+  ctx.fillText('W', -labelDist, 0);
+
+  // Subtle ticks radial (fewer ticks on small screens)
+  ctx.beginPath();
+  const tickStep = radar.r > 120 ? 30 : 60;
+  for (let a = 0; a < 360; a += tickStep) {
+    const ang = (a * Math.PI) / 180;
+    const x1 = Math.cos(ang) * (radar.r * 0.98);
+    const y1 = Math.sin(ang) * (radar.r * 0.98);
+    const x2 = Math.cos(ang) * (radar.r);
+    const y2 = Math.sin(ang) * (radar.r);
+    ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
+  }
+  ctx.strokeStyle = 'rgba(148,163,184,0.06)';
+  ctx.lineWidth = Math.max(0.6, Math.min(1.2, radar.r / 220));
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawSweep(ctx, angle) {
+  // Sweep width and trailing steps adapt to radar size for performance and visual scale
+  const sweepWidth = radar.r < 120 ? 0.18 : 0.28; // radians of sweep arc
+  const steps = Math.max(12, Math.floor(radar.r / 3)); // scale steps with radius
+  const maxAlpha = Math.min(0.72, 0.6 + (radar.r / 600));
+  ctx.save();
+  ctx.translate(radar.cx, radar.cy);
+
+  for (let i = 0; i < steps; i++) {
+    const a = angle - (i * (sweepWidth / steps));
+    const alpha = Math.max(0, maxAlpha * (1 - i / steps));
+    const g = ctx.createRadialGradient(0, 0, 0, 0, 0, radar.r);
+    // gradient stops scaled to radar size
+    g.addColorStop(0, `rgba(34,197,94,${(alpha * 0.95).toFixed(3)})`);
+    g.addColorStop(1, `rgba(34,197,94,${(alpha * 0.02).toFixed(3)})`);
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.arc(0, 0, radar.r, a - sweepWidth / steps, a, false);
+    ctx.closePath();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.fill();
+  }
+
+  // strong leading edge (angle thickness scales with radar size)
+  const edgeThickness = Math.max(0.006, 0.012 * (120 / Math.max(80, radar.r)));
+  ctx.beginPath();
+  ctx.moveTo(0,0);
+  ctx.arc(0,0, radar.r, angle - edgeThickness, angle + edgeThickness);
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(34,197,94,0.95)';
+  ctx.fill();
+
+  ctx.restore();
+  ctx.globalCompositeOperation = 'source-over';
+}
+
+function drawBlips(ctx, angle) {
+  ctx.save();
+  ctx.translate(radar.cx, radar.cy);
+  for (let b of radar.blips) {
+    // Determine angular distance to sweep leading edge
+    let diff = Math.atan2(Math.sin(angle - b.angle), Math.cos(angle - b.angle));
+    const passThreshold = Math.max(0.06, 0.12 * (120 / Math.max(80, radar.r))); // scale threshold with radius
+    // When sweep is within threshold behind the blip angle, spike intensity
+    if (Math.abs(diff) < passThreshold) {
+      b.intensity = Math.min(1.0, b.intensity + (1 - Math.abs(diff) / passThreshold));
+      b.lastHit = performance.now();
+    } else {
+      // decay intensity
+      b.intensity *= 0.985;
+    }
+
+    // further slowly decay over time
+    const age = (performance.now() - (b.lastHit || 0)) / 1000;
+    b.intensity = Math.max(0, b.intensity - age * 0.02);
+
+    const br = b.dist * radar.r;
+    const x = Math.cos(b.angle) * br;
+    const y = Math.sin(b.angle) * br;
+
+    // draw glow — size scales with radar.r
+    const glowRadius = Math.max(6, Math.round(radar.r * 0.06 + 18 * b.intensity));
+    const grd = ctx.createRadialGradient(x, y, 0, x, y, glowRadius);
+    const galpha = 0.6 * b.intensity;
+    grd.addColorStop(0, `rgba(34,197,94,${(0.95 * galpha).toFixed(3)})`);
+    grd.addColorStop(0.4, `rgba(34,197,94,${(0.5 * galpha).toFixed(3)})`);
+    grd.addColorStop(1, 'rgba(34,197,94,0)');
+    ctx.fillStyle = grd;
+    ctx.beginPath();
+    const outerRadius = Math.max(6, Math.round(radar.r * 0.04 + 12 * b.intensity));
+    ctx.arc(x, y, outerRadius, 0, Math.PI * 2);
+    ctx.fill();
+
+    // core dot (scale with radar.r)
+    if (b.intensity > 0.06) {
+      ctx.beginPath();
+      ctx.fillStyle = `rgba(220,255,200,${Math.min(1, 0.6 * b.intensity + 0.2)})`;
+      const coreRadius = Math.max(2, Math.round(radar.r * 0.01 + 3 * b.intensity));
+      ctx.arc(x, y, coreRadius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  ctx.restore();
+}
+
+function animateRadar(ts) {
+  if (!radar.ctx) return;
+  const ctx = radar.ctx;
+  const dt = (ts - (radar.lastTs || ts)) / 1000;
+  radar.lastTs = ts;
+  radar.sweepAngle += radar.sweepSpeed * dt;
+  // keep in [0, 2pi)
+  if (radar.sweepAngle > Math.PI * 2) radar.sweepAngle -= Math.PI * 2;
+
+  // background - match page palette
+  ctx.clearRect(0,0, radar.w, radar.h);
+  // subtle grid background
+  const bgGrad = ctx.createRadialGradient(radar.cx, radar.cy, radar.r * 0.1, radar.cx, radar.cy, radar.r);
+  bgGrad.addColorStop(0, 'rgba(3,8,20,0.95)');
+  bgGrad.addColorStop(1, 'rgba(0,4,10,0.88)');
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0,0, radar.w, radar.h);
+
+  // sweep (draw first so it appears beneath rings/crosshair)
+  drawSweep(ctx, radar.sweepAngle);
+
+  // blips
+  drawBlips(ctx, radar.sweepAngle);
+
+  // rings and crosshair (draw last so they're always visible)
+  drawRings(ctx);
+
+  requestAnimationFrame(animateRadar);
+}
+
+function showOfflineModal() {
+  const modal = document.getElementById('offline-modal-backdrop');
+  if (modal) modal.classList.add('show');
+}
+
+function hideOfflineModal() {
+  const modal = document.getElementById('offline-modal-backdrop');
+  if (modal) modal.classList.remove('show');
+}
+
+/* Refresh functions (poll backend) */
+async function refreshLatest() {
+  try {
+    const res = await fetch('/api/latest');
+    if (!res.ok) {
+      throw new Error('latest endpoint error: ' + res.status);
+    }
+
+    const data = await res.json();
+    const connected = data.connected === true;
+    sensorConnected = connected;
+
+    if (!connected) {
+      showOfflineModal();
+      renderMotionBadge(null, false);
+      renderState(data.device_state || 'OFF');
+      renderBrightness(data.brightness ?? 0);
+      document.getElementById('last-updated').textContent = 'Offline';
+      _lastMotion = null;
+      return;
+    }
+
+    hideOfflineModal();
+    renderMotionBadge(data.motion, true);
+    renderState(data.device_state);
+    renderBrightness(data.brightness);
+    document.getElementById('last-updated').textContent = data.timestamp || 'No signal';
+
+    // Create a blip when motion transitions to detected
+    if (data.motion === 1 && _lastMotion !== 1) {
+      // If device provided angle (degrees) and distance (meters), use them to place the blip
+      if (data.angle != null && data.distance != null) {
+        const deg = Number(data.angle);
+        const rangeMax = Number(data.range_max) || 10.0; // fallback if device doesn't send range_max
+        const normalized = Math.min(1, Math.max(0, Number(data.distance) / rangeMax));
+        // Convert device angle (0° = North/up, clockwise) to canvas radians (0 = +X, clockwise)
+        const angleRad = (deg - 90) * Math.PI / 180.0;
+        addBlipAt(angleRad, normalized);
+      } else {
+        // randomize position so multiple events look natural
+        addRandomBlip();
+      }
+    }
+    _lastMotion = data.motion;
+  } catch (e) {
+    console.error('refreshLatest error', e);
+    sensorConnected = false;
+    showOfflineModal();
+    renderMotionBadge(null, false);
+    renderState('OFF');
+    renderBrightness(0);
+    document.getElementById('last-updated').textContent = 'Offline';
+    _lastMotion = null;
+  }
+}
+
+async function refreshHistory() {
+  const res = await fetch('/api/history');
+  const rows = await res.json();
+  const body = document.getElementById('history-body');
+  body.innerHTML = rows.map(r =>
+    `<tr><td>${r.timestamp}</td><td>${r.motion === 1 ? 'Motion' : 'No Motion'}</td></tr>`
+  ).join('');
+}
+
+function refreshAll() { refreshLatest(); refreshHistory(); }
+
+document.getElementById('offline-modal-close').addEventListener('click', hideOfflineModal);
+
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape') {
+    hideOfflineModal();
+  }
+});
+
+// initialize radar + start polling
+radarInit();
+refreshAll();
+setInterval(refreshAll, 2000); // auto-update every 2 seconds, no page refresh needed
+</script>
+</body>
+</html>

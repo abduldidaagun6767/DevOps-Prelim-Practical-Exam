@@ -670,7 +670,7 @@ async function refreshHistory() {
   const rows = await res.json();
   const body = document.getElementById('history-body');
   body.innerHTML = rows.map(r =>
-    `<tr><td>${r.timestamp}</td><td>${r.motion === 1 ? 'Motion' : 'No Motion'}</td></tr>`
+    `<tr><td>${r.timestamp}</td><td>${r.motion === 1 ? 'Object detected' : 'No object detected'}</td></tr>`
   ).join('');
 }
 
